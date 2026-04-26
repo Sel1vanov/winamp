@@ -1,0 +1,37 @@
+{
+    "playlists": [
+        {
+            "name": "Избранное",
+            "tracks": [
+                {
+                    "title": "mujuice.mp3",
+                    "artist": "Неизвестен",
+                    "duration": 244,
+                    "path": "C:/Users/seliq/Downloads/Telegram Desktop/mujuice.mp3"
+                },
+                {
+                    "title": "Moskva 3000   Mujuice.mp3",
+                    "artist": "Неизвестен",
+                    "duration": 179,
+                    "path": "C:/Users/seliq/Downloads/Telegram Desktop/Moskva 3000   Mujuice.mp3"
+                },
+                {
+                    "title": "Rehab   Mujuice.mp3",
+                    "artist": "Неизвестен",
+                    "duration": 184,
+                    "path": "C:/Users/seliq/Downloads/Telegram Desktop/Rehab   Mujuice.mp3"
+                },
+                {
+                    "title": "Ласточки   Mujuice.mp3",
+                    "artist": "Неизвестен",
+                    "duration": 275,
+                    "path": "C:/Users/seliq/Downloads/Telegram Desktop/Ласточки   Mujuice.mp3"
+                }
+            ]
+        }
+    ],
+    "settings": {
+        "last_playlist": "Избранное",
+        "volume": 70
+    }
+}
