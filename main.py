@@ -377,6 +377,13 @@ class MusicPlayerApp:
 
             self.queue_listbox.insert(tk.END, display_text)
 
+        current_index = self.engine.current_index
+        if 0 <= current_index < self.queue_listbox.size():
+            self.queue_listbox.selection_clear(0, tk.END)
+            self.queue_listbox.selection_set(current_index)
+            self.queue_listbox.activate(current_index)
+            self.queue_listbox.see(current_index)
+
     def update_info_ui(self, status="Играет"):
         # Переключение (в виде текстовых уведомлений/статусов) 
         track = self.engine.get_current_track()
@@ -396,6 +403,7 @@ class MusicPlayerApp:
                 self.reset_playback_ui()
                 self.engine.play_track()
             self.update_info_ui("Играет")
+            self.update_queue_ui()
 
     def pause_action(self):
         if self.engine.get_current_track():
@@ -431,6 +439,7 @@ class MusicPlayerApp:
             self.progress_scale.config(to=track.duration)
             self.engine.play_track()
             self.update_info_ui("Играет")
+            self.update_queue_ui()
         else:
             self.info_var.set("Конец плейлиста")
             
@@ -442,6 +451,7 @@ class MusicPlayerApp:
             self.engine.play_track()
             self.progress_scale.config(to=track.duration)
             self.update_info_ui("Играет")
+            self.update_queue_ui()
 
     def toggle_shuffle(self):
         # 1. Спрашиваем у движка: перемешать или вернуть как было?
