@@ -1,5 +1,6 @@
+# main.py
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, simpledialog
 import os
 import threading
 import pygame
@@ -46,7 +47,11 @@ class MusicPlayerApp:
         index = selection[0]
         if messagebox.askyesno("Удаление", "Удалить трек из очереди?"):
             # 1. Удаляем из движка (из памяти)
-            self.engine.remove_track(index) 
+            removed_current = self.engine.remove_track(index)
+            if removed_current:
+                pygame.mixer.music.stop()
+                self.engine.is_paused = False
+                self.reset_playback_ui()
             
             # 2. Обновляем наши объекты плейлистов, чтобы storage их увидел
             # Предположим, у тебя один основной плейлист в self.playlists[0]
@@ -59,6 +64,7 @@ class MusicPlayerApp:
             
             # 4. Обновляем UI
             self.update_queue_ui()
+            self.update_info_ui("Остановлено")
         
 
     def seek_track_action(self, value):
@@ -90,10 +96,17 @@ class MusicPlayerApp:
                 print(f"Ошибка чтения метаданных: {e}")
                 actual_duration = 0 # Оставляем 0, если файл поврежден
 
-            # ПЕРЕДАЕМ actual_duration ВМЕСТО 0
+            artist = simpledialog.askstring("Артист", "Введите имя артиста:", parent=self.root)
+            if artist is None:
+                return
+
+            title = simpledialog.askstring("Название", "Введите название песни:", parent=self.root)
+            if title is None:
+                return
+
             new_track = Track(
-                title=filename, 
-                artist="Неизвестен", 
+                title=title.strip() or filename,
+                artist=artist.strip() or "Неизвестен",
                 duration=actual_duration, 
                 file_path=file_path
             )
@@ -102,6 +115,49 @@ class MusicPlayerApp:
                 self.playlists[0].add_track(new_track)
                 self.engine.load_queue(self.playlists[0].tracks)
                 self.update_queue_ui()
+
+    def play_selected_track(self, event=None):
+        selection = self.queue_listbox.curselection()
+        if not selection:
+            return
+
+        index = selection[0]
+        if not (0 <= index < len(self.engine.current_queue)):
+            return
+
+        self.engine.current_index = index
+        self.reset_playback_ui()
+        self.progress_scale.config(to=self.engine.current_queue[index].duration)
+        self.engine.play_track()
+        self.update_info_ui("Играет")
+
+    def rename_track_action(self):
+        selection = self.queue_listbox.curselection()
+        if not selection:
+            return
+
+        index = selection[0]
+        track = self.engine.current_queue[index]
+
+        new_artist = simpledialog.askstring("Переименовать", "Новый артист:", initialvalue=track.artist, parent=self.root)
+        if new_artist is None:
+            return
+
+        new_title = simpledialog.askstring("Переименовать", "Новое название:", initialvalue=track.title, parent=self.root)
+        if new_title is None:
+            return
+
+        track.artist = new_artist.strip() or track.artist
+        track.title = new_title.strip() or track.title
+        self.update_queue_ui()
+        self.update_info_ui("Обновлено")
+
+    def show_queue_context_menu(self, event):
+        if self.queue_listbox.size() == 0:
+            return
+        self.queue_listbox.selection_clear(0, tk.END)
+        self.queue_listbox.selection_set(self.queue_listbox.nearest(event.y))
+        self.queue_menu.tk_popup(event.x_root, event.y_root)
 
     def init_data(self):
         # Автозагрузка последнего плейлиста из JSON при старте [cite: 13]
@@ -171,6 +227,11 @@ class MusicPlayerApp:
             font=("Segoe UI", 10)
         )
         self.queue_listbox.pack(pady=5, padx=10)
+        self.queue_listbox.bind("<Double-Button-1>", self.play_selected_track)
+        self.queue_listbox.bind("<Button-3>", self.show_queue_context_menu)
+
+        self.queue_menu = tk.Menu(self.root, tearoff=0)
+        self.queue_menu.add_command(label="Переименовать", command=self.rename_track_action)
         self.update_queue_ui()
 
         # 5. ВИДЖЕТЫ: Блок управления (кнопки ⏮ ▶ ⏸ ⏭)
@@ -205,6 +266,7 @@ class MusicPlayerApp:
         for text, mode in [("None", "None"), ("All", "Playlist"), ("One", "Track")]:
             tk.Radiobutton(
                 mode_frame, text=text, variable=self.repeat_var, value=mode,
+                command=self.toggle_repeat,
                 bg=BG_COLOR, fg=FG_COLOR, selectcolor=ACCENT_COLOR, activebackground=BG_COLOR
             ).pack(side=tk.LEFT, padx=2)
 
@@ -354,6 +416,7 @@ class MusicPlayerApp:
         self.start_time_offset = 0
 
         repeat_mode = self.repeat_var.get()
+        self.engine.set_repeat(repeat_mode)
 
         if repeat_mode == "Track":
             # Повтор текущего: индекс не меняем
