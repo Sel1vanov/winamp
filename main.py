@@ -38,13 +38,22 @@ class MusicPlayerApp:
         # 3. И ТОЛЬКО ПОТОМ создание GUI и запуск цикла обновления
         self.build_gui()
 
-
-    def remove_track_action(self):
+    def get_selected_queue_index(self):
         selection = self.queue_listbox.curselection()
         if not selection:
+            return None
+
+        listbox_index = selection[0]
+        if 0 <= listbox_index < len(self.filtered_indices):
+            return self.filtered_indices[listbox_index]
+        return None
+
+
+    def remove_track_action(self):
+        index = self.get_selected_queue_index()
+        if index is None:
             return
 
-        index = selection[0]
         if messagebox.askyesno("Удаление", "Удалить трек из очереди?"):
             # 1. Удаляем из движка (из памяти)
             removed_current = self.engine.remove_track(index)
@@ -117,11 +126,10 @@ class MusicPlayerApp:
                 self.update_queue_ui()
 
     def play_selected_track(self, event=None):
-        selection = self.queue_listbox.curselection()
-        if not selection:
+        index = self.get_selected_queue_index()
+        if index is None:
             return
 
-        index = selection[0]
         if not (0 <= index < len(self.engine.current_queue)):
             return
 
@@ -132,11 +140,10 @@ class MusicPlayerApp:
         self.update_info_ui("Играет")
 
     def rename_track_action(self):
-        selection = self.queue_listbox.curselection()
-        if not selection:
+        index = self.get_selected_queue_index()
+        if index is None:
             return
 
-        index = selection[0]
         track = self.engine.current_queue[index]
 
         new_artist = simpledialog.askstring("Переименовать", "Новый артист:", initialvalue=track.artist, parent=self.root)
@@ -158,6 +165,9 @@ class MusicPlayerApp:
         self.queue_listbox.selection_clear(0, tk.END)
         self.queue_listbox.selection_set(self.queue_listbox.nearest(event.y))
         self.queue_menu.tk_popup(event.x_root, event.y_root)
+
+    def on_search_change(self, event=None):
+        self.update_queue_ui()
 
     def init_data(self):
         # Автозагрузка последнего плейлиста из JSON при старте [cite: 13]
@@ -193,6 +203,8 @@ class MusicPlayerApp:
         self.volume_var = tk.DoubleVar(value=0.05)
         self.shuffle_var = tk.BooleanVar(value=False)
         self.repeat_var = tk.StringVar(value="None")
+        self.search_var = tk.StringVar(value="")
+        self.filtered_indices = []
 
         # Параметры для кнопок (чтобы не дублировать код)
         btn_params = {
@@ -212,6 +224,13 @@ class MusicPlayerApp:
             fg=ACCENT_COLOR, 
             font=("Segoe UI", 14, "bold")
         ).pack(pady=15)
+
+        search_frame = tk.Frame(self.root, bg=BG_COLOR)
+        search_frame.pack(pady=3, padx=10, fill=tk.X)
+        tk.Label(search_frame, text="Поиск:", bg=BG_COLOR, fg=FG_COLOR, font=("Segoe UI", 10)).pack(side=tk.LEFT)
+        self.search_entry = tk.Entry(search_frame, textvariable=self.search_var, font=("Segoe UI", 10))
+        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=6)
+        self.search_entry.bind("<KeyRelease>", self.on_search_change)
 
         # 4. ВИДЖЕТЫ: Окно очереди (Listbox)
         self.queue_listbox = tk.Listbox(
@@ -360,10 +379,16 @@ class MusicPlayerApp:
 
     def update_queue_ui(self):
         self.queue_listbox.delete(0, tk.END)
-        for track in self.engine.current_queue:
+        self.filtered_indices = []
+        query = self.search_var.get().strip().lower() if hasattr(self, 'search_var') else ""
+
+        for idx, track in enumerate(self.engine.current_queue):
             # Вытаскиваем данные. Если поля нет — пишем "???"
             artist = getattr(track, 'artist', 'Unknown')
             title = getattr(track, 'title', 'Unknown')
+
+            if query and query not in artist.lower() and query not in title.lower():
+                continue
             
             # Если и артист, и название есть — клеим через тире
             # Если нет (например, это просто путь), оставляем имя файла
@@ -376,13 +401,15 @@ class MusicPlayerApp:
                 display_text = os.path.basename(path)
 
             self.queue_listbox.insert(tk.END, display_text)
+            self.filtered_indices.append(idx)
 
         current_index = self.engine.current_index
-        if 0 <= current_index < self.queue_listbox.size():
+        if current_index in self.filtered_indices:
+            visible_index = self.filtered_indices.index(current_index)
             self.queue_listbox.selection_clear(0, tk.END)
-            self.queue_listbox.selection_set(current_index)
-            self.queue_listbox.activate(current_index)
-            self.queue_listbox.see(current_index)
+            self.queue_listbox.selection_set(visible_index)
+            self.queue_listbox.activate(visible_index)
+            self.queue_listbox.see(visible_index)
 
     def update_info_ui(self, status="Играет"):
         # Переключение (в виде текстовых уведомлений/статусов) 
