@@ -49,7 +49,7 @@ class PlaybackManager:
             self.current_queue = self.original_queue.copy()
 
     def set_repeat(self, mode):
-        # Зацикливание одного трека или всего плейлиста [cite: 13]
+        # Зацикливание одного трека или всего плейлиста 
         self.repeat_mode = mode 
 
     def next_track(self):
@@ -81,3 +81,23 @@ class PlaybackManager:
             return self.current_queue[self.current_index]
         return None
     
+    def remove_track(self, index):
+        if 0 <= index < len(self.current_queue):
+            self.current_queue.pop(index)
+            if index < len(self.original_queue):
+                self.original_queue.pop(index)
+            # Больше здесь ничего не вызываем!
+
+    def save_library(self):
+        import json
+        data = []
+        for track in self.current_queue:
+            data.append({
+                "title": track.title,
+                "artist": track.artist,
+                "duration": track.duration,
+                "file_path": track.file_path  # Именно file_path, как в твоем __init__
+            })
+        
+        with open("library.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)

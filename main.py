@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter import ttk
 from tkinter import messagebox, filedialog
 import os
 import threading
@@ -40,32 +39,26 @@ class MusicPlayerApp:
 
 
     def remove_track_action(self):
-        # Получаем индекс выбранного элемента в списке
-        selected_index = self.queue_listbox.curselection()
-        
-        if not selected_index:
-            messagebox.showwarning("Внимание", "Выберите трек для удаления")
+        selection = self.queue_listbox.curselection()
+        if not selection:
             return
 
-        index = selected_index[0]
-        # Находим объект трека в текущей очереди движка
-        track_to_remove = self.engine.current_queue[index]
-        
-        # 1. Удаляем из объекта Playlist (модель)
-        if self.playlists:
-            self.playlists[0].remove_track(track_to_remove) # [cite: 21]
-        
-        # 2. Обновляем очередь в движке
-        self.engine.load_queue(self.playlists[0].tracks)
-        
-        # 3. Обновляем визуальный список (GUI)
-        self.update_queue_ui()
-        
-        # Если удалили тот трек, который сейчас играл — сбрасываем инфо-панель
-        current = self.engine.get_current_track()
-        if not current:
-            self.info_var.set("Трек удален")
-    
+        index = selection[0]
+        if messagebox.askyesno("Удаление", "Удалить трек из очереди?"):
+            # 1. Удаляем из движка (из памяти)
+            self.engine.remove_track(index) 
+            
+            # 2. Обновляем наши объекты плейлистов, чтобы storage их увидел
+            # Предположим, у тебя один основной плейлист в self.playlists[0]
+            if self.playlists:
+                self.playlists[0].tracks = self.engine.current_queue.copy()
+            
+            # 3. Сохраняем ЧЕРЕЗ STORAGE (правильная структура JSON)
+            settings = {"last_playlist": "", "volume": int(self.engine.volume_var.get() * 100 if hasattr(self.engine, 'volume_var') else 70)}
+            self.storage.save_data(self.playlists, settings)
+            
+            # 4. Обновляем UI
+            self.update_queue_ui()
         
 
     def seek_track_action(self, value):
@@ -136,15 +129,14 @@ class MusicPlayerApp:
         ACCENT_COLOR = "#1DB954" # Зеленый (Spotify)
         BTN_COLOR = "#333333"   # Цвет кнопок
 
-
         self.root.configure(bg=BG_COLOR)
 
         # 2. СНАЧАЛА СОЗДАЕМ ВСЕ ПЕРЕМЕННЫЕ (чтобы не было NameError)
         self.info_var = tk.StringVar(value="Остановлено")
-        self.shuffle_var = tk.BooleanVar(value=False)
-        self.repeat_var = tk.StringVar(value="None")
         self.progress_var = tk.DoubleVar(value=0)
         self.volume_var = tk.DoubleVar(value=0.05)
+        self.shuffle_var = tk.BooleanVar(value=False)
+        self.repeat_var = tk.StringVar(value="None")
 
         # Параметры для кнопок (чтобы не дублировать код)
         btn_params = {
@@ -307,7 +299,21 @@ class MusicPlayerApp:
     def update_queue_ui(self):
         self.queue_listbox.delete(0, tk.END)
         for track in self.engine.current_queue:
-            self.queue_listbox.insert(tk.END, track.get_info())
+            # Вытаскиваем данные. Если поля нет — пишем "???"
+            artist = getattr(track, 'artist', 'Unknown')
+            title = getattr(track, 'title', 'Unknown')
+            
+            # Если и артист, и название есть — клеим через тире
+            # Если нет (например, это просто путь), оставляем имя файла
+            if artist != 'Unknown' or title != 'Unknown':
+                display_text = f"{artist} — {title}"
+            else:
+                # Если метаданных нет, берем просто имя файла
+                import os
+                path = getattr(track, 'path', str(track))
+                display_text = os.path.basename(path)
+
+            self.queue_listbox.insert(tk.END, display_text)
 
     def update_info_ui(self, status="Играет"):
         # Переключение (в виде текстовых уведомлений/статусов) 

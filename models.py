@@ -5,6 +5,10 @@ def format_time(seconds):
     return f"{minutes:02d}:{seconds:02d}"
 
 class Track:
+    def __str__(self):
+        # Возвращаем заголовок или имя файла
+        return self.title
+    
     def __init__(self, title, artist, duration, file_path):
         self.title = title # [cite: 20]
         self.artist = artist # [cite: 20]
