@@ -8,8 +8,8 @@ class DataStorage:
 
     def load_data(self):
         if not os.path.exists(self.filename):
-            # Возвращаем дефолтную структуру, если файла нет
-            return {"playlists": [], "settings": {"last_playlist": "", "volume": 70}} # [cite: 28]
+            # возвращаем обычную структуру, если нет файла
+            return {"playlists": [], "settings": {"last_playlist": "", "volume": 70}}
         
         try:
             with open(self.filename, 'r', encoding='utf-8') as f:
@@ -23,9 +23,9 @@ class DataStorage:
         data = {"playlists": [], "settings": settings}
         for pl in playlists:
             pl_data = {
-                "name": pl.name, # [cite: 28]
+                "name": pl.name,
                 "tracks": [
-                    {"title": t.title, "artist": t.artist, "duration": t.duration, "path": t.file_path} # [cite: 28]
+                    {"title": t.title, "artist": t.artist, "duration": t.duration, "path": t.file_path}
                     for t in pl.tracks
                 ]
             }
