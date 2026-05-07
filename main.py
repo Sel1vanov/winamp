@@ -2,12 +2,11 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog, simpledialog
 import os
-import threading
 import pygame
 from mutagen.mp3 import MP3
 from mutagen.wave import WAVE
 
-# Импорты твоих модулей
+# импорт наших модулей / den
 from models import Track, Playlist, format_time
 from engine import PlaybackManager
 from storage import DataStorage
@@ -18,7 +17,7 @@ class MusicPlayerApp:
         self.root = root
         self.root.title("Winamp")
         try:
-            # Если файл лежит в той же папке, что и main.py
+            #проверка на наличие иконки в папке
             self.icon_img = tk.PhotoImage(file='logo.png') 
             self.root.iconphoto(False, self.icon_img)
         except Exception as e:
@@ -28,14 +27,14 @@ class MusicPlayerApp:
         self.engine = PlaybackManager()
         self.playlists = []
         
-        # 1. СНАЧАЛА все переменные состояния
+        # переменные состояния
         self.is_dragging = False 
-        self.start_time_offset = 0 # ТЕПЕРЬ ОНА ТУТ
+        self.start_time_offset = 0
         
-        # 2. ЗАТЕМ загрузка данных
+        # загрузка данных
         self.init_data()
         
-        # 3. И ТОЛЬКО ПОТОМ создание GUI и запуск цикла обновления
+        # создание gui
         self.build_gui()
 
     def get_selected_queue_index(self):
@@ -55,23 +54,22 @@ class MusicPlayerApp:
             return
 
         if messagebox.askyesno("Удаление", "Удалить трек из очереди?"):
-            # 1. Удаляем из движка (из памяти)
+            # удаляем трек из самого движка
             removed_current = self.engine.remove_track(index)
             if removed_current:
                 pygame.mixer.music.stop()
                 self.engine.is_paused = False
                 self.reset_playback_ui()
             
-            # 2. Обновляем наши объекты плейлистов, чтобы storage их увидел
-            # Предположим, у тебя один основной плейлист в self.playlists[0]
+            # обновляем объекты плейлиста, чтобы подгрузить их в storage / den
             if self.playlists:
                 self.playlists[0].tracks = self.engine.current_queue.copy()
             
-            # 3. Сохраняем ЧЕРЕЗ STORAGE (правильная структура JSON)
+            # структура для json
             settings = {"last_playlist": "", "volume": int(self.engine.volume_var.get() * 100 if hasattr(self.engine, 'volume_var') else 70)}
             self.storage.save_data(self.playlists, settings)
             
-            # 4. Обновляем UI
+            # обновляем интерфейс
             self.update_queue_ui()
             self.update_info_ui("Остановлено")
         
@@ -89,12 +87,12 @@ class MusicPlayerApp:
         )
         
         if file_path:
-            # Получаем имя файла без полного пути для красоты
+            # достаем имя файла для подгрузки в плеер / den
             filename = os.path.basename(file_path)
             actual_duration = 0
             
             try:
-                # Определяем длительность в зависимости от расширения
+                # определяем длительность трека с помощью mutagen / den
                 if file_path.lower().endswith('.mp3'):
                     audio = MP3(file_path)
                     actual_duration = int(audio.info.length)
@@ -103,7 +101,7 @@ class MusicPlayerApp:
                     actual_duration = int(audio.info.length)
             except Exception as e:
                 print(f"Ошибка чтения метаданных: {e}")
-                actual_duration = 0 # Оставляем 0, если файл поврежден
+                actual_duration = 0 #если ошибка в подгрузке то оставляем 0 в длительности
 
             artist = simpledialog.askstring("Артист", "Введите имя артиста:", parent=self.root)
             if artist is None:
@@ -139,7 +137,7 @@ class MusicPlayerApp:
         self.engine.play_track()
         self.update_info_ui("Играет")
 
-    def rename_track_action(self):
+    def rename_track_action(self): # метод для возможности переименовать трек внутри программы, после ее загрузки / den
         index = self.get_selected_queue_index()
         if index is None:
             return
@@ -170,7 +168,7 @@ class MusicPlayerApp:
         self.update_queue_ui()
 
     def init_data(self):
-        # Автозагрузка последнего плейлиста из JSON при старте [cite: 13]
+        # подгрузка плейлиста из json 
         data = self.storage.load_data()
         
         for pl_data in data.get("playlists", []):
@@ -180,24 +178,23 @@ class MusicPlayerApp:
             self.playlists.append(pl)
             
         if not self.playlists:
-            # Создаем тестовые данные, если БД пуста
+            # тестовые данные, если плейлист пустой
             pl = Playlist("Избранное")
             pl.add_track(Track("Song Name", "Artist", 210, "C:/music/song.mp3"))
             self.playlists.append(pl)
             
-        # Загружаем первый плейлист в движок
+        # загружаем первый плейлист в плеер, сделано для возможности масштабирования проекта 
         self.engine.load_queue(self.playlists[0].tracks)
 
     def build_gui(self):
-        # 1. Цвета и параметры
-        BG_COLOR = "#212121"    # Темно-серый
-        FG_COLOR = "#FFFFFF"    # Белый текст
-        ACCENT_COLOR = "#1DB954" # Зеленый (Spotify)
-        BTN_COLOR = "#333333"   # Цвет кнопок
+        BG_COLOR = "#212121"    # темно-серый
+        FG_COLOR = "#FFFFFF"    # белый текст
+        ACCENT_COLOR = "#1DB954" # зеленый
+        BTN_COLOR = "#333333"   # цвет кнопок
 
         self.root.configure(bg=BG_COLOR)
 
-        # 2. СНАЧАЛА СОЗДАЕМ ВСЕ ПЕРЕМЕННЫЕ (чтобы не было NameError)
+        #объявляем переменные
         self.info_var = tk.StringVar(value="Остановлено")
         self.progress_var = tk.DoubleVar(value=0)
         self.volume_var = tk.DoubleVar(value=0.05)
@@ -206,7 +203,7 @@ class MusicPlayerApp:
         self.search_var = tk.StringVar(value="")
         self.filtered_indices = []
 
-        # Параметры для кнопок (чтобы не дублировать код)
+        # задаем параметры для кнопок
         btn_params = {
             "bg": BTN_COLOR, 
             "fg": FG_COLOR, 
@@ -216,7 +213,7 @@ class MusicPlayerApp:
             "width": 10
         }
 
-        # 3. ВИДЖЕТЫ: Информационная панель (Название трека)
+        # информ.панель (название трека)
         tk.Label(
             self.root, 
             textvariable=self.info_var, 
@@ -232,7 +229,7 @@ class MusicPlayerApp:
         self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=6)
         self.search_entry.bind("<KeyRelease>", self.on_search_change)
 
-        # 4. ВИДЖЕТЫ: Окно очереди (Listbox)
+        # список с треками
         self.queue_listbox = tk.Listbox(
             self.root, 
             width=50, 
@@ -253,7 +250,7 @@ class MusicPlayerApp:
         self.queue_menu.add_command(label="Переименовать", command=self.rename_track_action)
         self.update_queue_ui()
 
-        # 5. ВИДЖЕТЫ: Блок управления (кнопки ⏮ ▶ ⏸ ⏭)
+        # блок управления треком
         control_frame = tk.Frame(self.root, bg=BG_COLOR)
         control_frame.pack(pady=5)
 
@@ -262,17 +259,17 @@ class MusicPlayerApp:
         tk.Button(control_frame, text="⏸ Pause", command=self.pause_action, **btn_params).pack(side=tk.LEFT, padx=5)
         tk.Button(control_frame, text="⏭ Next", command=self.next_action, **btn_params).pack(side=tk.LEFT, padx=5)
 
-        # 6. ВИДЖЕТЫ: Кнопки работы с файлами
+        # кнопки работы с файлами
         file_ops_frame = tk.Frame(self.root, bg=BG_COLOR)
         file_ops_frame.pack(pady=5)
         
         tk.Button(file_ops_frame, text="Добавить", command=self.add_track_action, **btn_params).pack(side=tk.LEFT, padx=5)
-        # Кнопка удаления с красным текстом
+        # кнопка удаления трека
         del_params = btn_params.copy()
         del_params["fg"] = "#FF4444"
         tk.Button(file_ops_frame, text="Удалить", command=self.remove_track_action, **del_params).pack(side=tk.LEFT, padx=5)
 
-        # 7. ВИДЖЕТЫ: Блок режимов (Shuffle/Repeat)
+        # блок для перемешки треков и репита
         mode_frame = tk.Frame(self.root, bg=BG_COLOR)
         mode_frame.pack(pady=5)
 
@@ -289,7 +286,7 @@ class MusicPlayerApp:
                 bg=BG_COLOR, fg=FG_COLOR, selectcolor=ACCENT_COLOR, activebackground=BG_COLOR
             ).pack(side=tk.LEFT, padx=2)
 
-        # 8. ВИДЖЕТЫ: Ползунок прогресса
+        # ползунок
         slider_frame = tk.Frame(self.root, bg=BG_COLOR)
         slider_frame.pack(pady=10, fill=tk.X, padx=20)
 
@@ -302,25 +299,26 @@ class MusicPlayerApp:
             from_=0, to=100, 
             orient=tk.HORIZONTAL,
             
-            # --- ПРАВИЛЬНЫЕ ПАРАМЕТРИ WINAMP ---
-            bg=BG_COLOR,              # Фон вокруг
-            troughcolor="#111111",    # Глубокая черная дорожка
-            activebackground=ACCENT_COLOR, # Цвет при нажатии
+            #приблизительное оформление как в винампе
+
+            bg=BG_COLOR,              # фон
+            troughcolor="#111111",    # дорожка
+            activebackground=ACCENT_COLOR, # при нажатии цвет
             
-            width=10,                 # ТОЛЩИНА ДОРОЖКИ (вместо thickness)
-            sliderlength=25,          # ДЛИНА БЕГУНКА (кирпичика)
+            width=10,                 # толщина 
+            sliderlength=25,          # длина кирпичика (переключателя)
             
-            relief="flat",            # Плоские края
-            borderwidth=0,            # Без рамок
-            highlightthickness=0,     # Без фокуса
-            showvalue=False           # Не показывать цифры над ползунком
+            relief="flat",            # плоские края
+            borderwidth=0,            # рамок нет
+            highlightthickness=0,     # убирает фокус с ползунка
+            showvalue=False           # убирает цифры под ползунком
         )
         self.progress_scale.bind("<ButtonPress-1>", self.on_slider_press)
         self.progress_scale.bind("<B1-Motion>", self.on_slider_motion)
         self.progress_scale.bind("<ButtonRelease-1>", self.on_slider_release)
         self.progress_scale.pack(fill=tk.X)
 
-        # 9. ВИДЖЕТЫ: Громкость
+        # громкость
         volume_frame = tk.Frame(self.root, bg=BG_COLOR)
         volume_frame.pack(pady=5)
 
@@ -334,46 +332,45 @@ class MusicPlayerApp:
         )
         self.volume_scale.pack(side=tk.LEFT, padx=5)
 
-        # 10. ЗАПУСК ДВИЖКА
+        # запуск движка
         pygame.mixer.music.set_volume(self.volume_var.get())
         self.update_slider()
 
     def change_volume(self, val):
-        """Метод вызывается автоматически при движении слайдера громкости"""
+        """Метод слайдера громкости"""
         volume = float(val)
         pygame.mixer.music.set_volume(volume)
-        # Если хочешь, можно выводить уровень в консоль для теста:
-        # print(f"Громкость: {int(volume * 100)}%")
+        # устанавливает громкость, очевидно)
 
     def update_slider(self):
         track = self.engine.get_current_track()
         
-        # Если трека нет, просто перезапускаем цикл, чтобы не «умер»
+        # если трека нет, перезапускаем слайдер
         if not track or track.duration <= 0:
             self.root.after(500, self.update_slider)
             return
 
-        # 1. Принудительно синхронизируем макс. значение ползунка с длиной трека
+        # синхронизация ползунка с его длительностью
         if float(self.progress_scale['to']) != float(track.duration):
             self.progress_scale.config(to=track.duration)
 
-        # 2. Получаем позицию от pygame
+        # получаем позицию от pygame
         current_ms = pygame.mixer.music.get_pos()
         
         if current_ms != -1 and not self.is_dragging:
-            # Считаем текущую секунду (смещение + прогресс)
+            # считаем текущую секунду + прогресс
             current_sec = self.start_time_offset + (current_ms / 1000)
             
-            # 3. Обновляем ползунок и таймер
+            # обновляем ползунок и таймер
             self.progress_var.set(current_sec)
             self.time_label.config(text=f"{format_time(current_sec)} / {format_time(track.duration)}")
 
-            # 4. Проверка автовоспроизведения (чуть раньше конца трека)
+            # проверка автовоспроизведения
             if track.duration - current_sec < 1.0:
                 self.next_action()
-                return # Выходим, так как next_action сам вызовет update_slider через play_track
+                return
 
-        # 5. Перезапуск цикла ВСЕГДА
+        # перезапускаем цикл
         self.root.after(500, self.update_slider)
 
 
@@ -383,19 +380,18 @@ class MusicPlayerApp:
         query = self.search_var.get().strip().lower() if hasattr(self, 'search_var') else ""
 
         for idx, track in enumerate(self.engine.current_queue):
-            # Вытаскиваем данные. Если поля нет — пишем "???"
+            # вытаскиваем данные из трека для наименования
             artist = getattr(track, 'artist', 'Unknown')
             title = getattr(track, 'title', 'Unknown')
 
             if query and query not in artist.lower() and query not in title.lower():
                 continue
             
-            # Если и артист, и название есть — клеим через тире
-            # Если нет (например, это просто путь), оставляем имя файла
+            # оформление трека на автомате
             if artist != 'Unknown' or title != 'Unknown':
                 display_text = f"{artist} — {title}"
             else:
-                # Если метаданных нет, берем просто имя файла
+                #если нет данных - оставляем путь
                 import os
                 path = getattr(track, 'path', str(track))
                 display_text = os.path.basename(path)
@@ -412,7 +408,7 @@ class MusicPlayerApp:
             self.queue_listbox.see(visible_index)
 
     def update_info_ui(self, status="Играет"):
-        # Переключение (в виде текстовых уведомлений/статусов) 
+        # переключение статуса проигрывания
         track = self.engine.get_current_track()
         if track:
             self.info_var.set(f"{status}: {track.artist} - {track.title}")
@@ -422,11 +418,10 @@ class MusicPlayerApp:
     def play_action(self):
         track = self.engine.get_current_track()
         if track:
-            # Если песня уже играла и была на паузе — просто продолжаем
+            # продолжение трека на паузе
             if self.engine.is_paused:
-                self.engine.pause_track() # Снимет с паузы
+                self.engine.pause_track() #снимает с паузы трек
             else:
-                # Если это запуск с нуля или после Стопа
                 self.reset_playback_ui()
                 self.engine.play_track()
             self.update_info_ui("Играет")
@@ -434,19 +429,17 @@ class MusicPlayerApp:
 
     def pause_action(self):
         if self.engine.get_current_track():
-            self.engine.pause_track() # Поставит на паузу или снимет с неё
+            self.engine.pause_track() # поставит на паузу трек или снимает с паузы
             status = "Пауза" if self.engine.is_paused else "Играет"
             self.update_info_ui(status)
 
     def next_action(self, fade_ms=0):
         if fade_ms > 0:
             pygame.mixer.music.fadeout(fade_ms)
-            # Передаем fade_ms=0 в следующем вызове, чтобы выполнить саму логику смены
             self.root.after(fade_ms, lambda: self.next_action(fade_ms=0))
             return
 
-        # 1. Сначала сбрасываем визуальный ползунок в 0, 
-        # чтобы update_slider перестал видеть "конец трека"
+        # сбрасываем ползунок на 0
         self.progress_var.set(0)
         self.start_time_offset = 0
 
@@ -454,15 +447,15 @@ class MusicPlayerApp:
         self.engine.set_repeat(repeat_mode)
 
         if repeat_mode == "Track":
-            # Повтор текущего: индекс не меняем
+            # если повторение трека - не меняем трек
             track = self.engine.get_current_track()
         else:
-            # Обычный переход или повтор плейлиста
+            # иначе - меняем трек
             pygame.mixer.music.stop()
             track = self.engine.next_track()
 
         if track:
-            # Обновляем масштаб (на случай если трек всё же сменился)
+            # обновляем масштаб, если трек изменился
             self.progress_scale.config(to=track.duration)
             self.engine.play_track()
             self.update_info_ui("Играет")
@@ -472,7 +465,7 @@ class MusicPlayerApp:
             
 
     def prev_action(self):
-        self.reset_playback_ui() # Сначала чистим
+        self.reset_playback_ui() #сначала чистим интерфейс
         track = self.engine.prev_track()
         if track:
             self.engine.play_track()
@@ -481,19 +474,19 @@ class MusicPlayerApp:
             self.update_queue_ui()
 
     def toggle_shuffle(self):
-        # 1. Спрашиваем у движка: перемешать или вернуть как было?
+        # перемешать или вернуть обратно
         if self.shuffle_var.get():
             self.engine.shuffle_queue()
         else:
-            # Возвращаем дефолтный порядок из первого плейлиста
+            # возвращаем обратный порядок
             if self.playlists:
                 self.engine.load_queue(self.playlists[0].tracks)
         
-        # 2. СБРОС: Чтобы старое время не приклеилось к новому треку
+        # сбрасываем время, чтобы оно не приклеилось к новому значению
         self.start_time_offset = 0
-        pygame.mixer.music.stop() # Останови старый поток, чтобы не было каши
+        pygame.mixer.music.stop() # останавливаем старый поток
         
-        # 3. ОБНОВЛЕНИЕ: Синхронизируем GUI со списком движка
+        # обновляем интерфейс и синхронизируем с движком
         self.update_queue_ui()
         self.update_info_ui("Список перемешан")
 
@@ -513,7 +506,7 @@ class MusicPlayerApp:
 
     def on_slider_release(self, event):
         new_pos = self.progress_scale.get()
-        self.start_time_offset = new_pos # Запоминаем, куда перемотали
+        self.start_time_offset = new_pos # запоминаем куда перемотали трек
         pygame.mixer.music.play(start=float(new_pos))
         self.is_dragging = False
 
@@ -521,27 +514,26 @@ class MusicPlayerApp:
         """Полный сброс всех переменных времени перед новым треком"""
         self.start_time_offset = 0
         self.progress_var.set(0)
-        # Сбрасываем текст, чтобы старое время не висело ни секунды
+        # сброс текста
         self.time_label.config(text="00:00 / 00:00")
 
     def smooth_next(self, fade_ms=1500):
-        """Плавно гасит звук и переключает на следующий трек"""
-        # 1. Запускаем затухание звука в pygame
+        """Плавно гасит звук и переключает на следующий трек""" # den
+        # затухание звука
         pygame.mixer.music.fadeout(fade_ms)
         
-        # 2. Ждем окончания затухания, прежде чем физически сменить трек
-        # Используем after, чтобы не вешать интерфейс
+        # сначала затухание, потом следующий трек
         self.root.after(fade_ms, self.next_action)
 
     def update_slider(self):
         track = self.engine.get_current_track()
         
-        # Если трек есть, ПЕРВЫМ ДЕЛОМ проверяем масштаб
+        # проверяем масштаб, если есть слеюущий трек
         if track and track.duration > 0:
             if float(self.progress_scale['to']) != float(track.duration):
                 self.progress_scale.config(to=track.duration)
 
-            # Если музыка реально звучит
+            # если играет музыка
             if pygame.mixer.music.get_busy() and not self.is_dragging:
                 current_ms = pygame.mixer.music.get_pos()
                 
@@ -549,24 +541,23 @@ class MusicPlayerApp:
                     current_sec = self.start_time_offset + (current_ms / 1000)
                     current_sec = min(current_sec, track.duration)
                     
-                    # Обновляем цифры и ползунок
+                    # обновляем ползунок и цифры
                     self.progress_var.set(current_sec)
                     self.time_label.config(text=f"{format_time(current_sec)} / {format_time(track.duration)}")
 
-                    # ПЛАВНОЕ АВТОПЕРЕКЛЮЧЕНИЕ
-                    # Если осталось 2 секунды — начинаем гасить звук
+                    # затухание за 2 сек до конца трека / den
                     if track.duration - current_sec < 2.0:
                         self.next_action(fade_ms=1500)
                         self.root.after(2000, self.update_slider)
                         return
 
-        # Цикл не должен прерываться
+        # цикл не прерывается
         self.root.after(500, self.update_slider)
 if __name__ == "__main__":
     root = tk.Tk()
     app = MusicPlayerApp(root)
     
-    # Сохранение при закрытии приложения
+    # сохранение
     def on_closing():
         app.storage.save_data(app.playlists, {"last_playlist": "Избранное", "volume": 70})
         root.destroy()

@@ -5,7 +5,7 @@ import os
 
 class PlaybackManager:
     def __init__(self):
-        pygame.mixer.init()  # Инициализация звукового движка
+        pygame.mixer.init()  # инициализация звукового движка / egor
         self.current_queue = []
         self.original_queue = []
         self.current_index = -1
@@ -17,13 +17,13 @@ class PlaybackManager:
         track = self.get_current_track()
         if track:
             try:
-                # Останавливаем предыдущий поток перед загрузкой нового файла
+                # останавливаем предыдущий поток перед загрузкой нового файла / egor
                 pygame.mixer.music.stop()
-                pygame.mixer.music.load(track.file_path) # Загрузка файла
-                pygame.mixer.music.play() # Запуск звука
+                pygame.mixer.music.load(track.file_path) # загрузка файла
+                pygame.mixer.music.play() # запуск звука
                 self.is_paused = False
             except Exception as e:
-                # Детальный лог для диагностики сбоев вроде "Out of memory"
+                # тест для дебага / den
                 file_exists = os.path.exists(track.file_path)
                 file_size = os.path.getsize(track.file_path) if file_exists else "N/A"
                 print(
@@ -31,14 +31,14 @@ class PlaybackManager:
                     f"{e}; file='{track.file_path}'; exists={file_exists}; size={file_size}; pygame='{pygame.get_error()}'"
                 )
 
-                # Fallback: иногда backend аудио падает и помогает переинициализация mixer
+                # переинициализация движка, если упадет backend / egor
                 try:
                     pygame.mixer.quit()
                     pygame.mixer.init()
                     pygame.mixer.music.load(track.file_path)
                     pygame.mixer.music.play()
                     self.is_paused = False
-                except Exception as retry_error:
+                except Exception as retry_error: #тест для дебага / denis
                     print(f"Повторный запуск после re-init не удался: {retry_error}")
 
     def pause_track(self):
@@ -61,7 +61,7 @@ class PlaybackManager:
             self.shuffle_queue()
 
     def shuffle_queue(self):
-        # Изменение порядка на случайный 
+        # рандом для перемешивания
         self.is_shuffle = not self.is_shuffle
         if self.is_shuffle:
             random.shuffle(self.current_queue)
@@ -69,7 +69,7 @@ class PlaybackManager:
             self.current_queue = self.original_queue.copy()
 
     def set_repeat(self, mode):
-        # Зацикливание одного трека или всего плейлиста 
+        # цикл одного трека
         self.repeat_mode = mode 
 
     def next_track(self):
@@ -124,7 +124,7 @@ class PlaybackManager:
                 "title": track.title,
                 "artist": track.artist,
                 "duration": track.duration,
-                "file_path": track.file_path  # Именно file_path, как в твоем __init__
+                "file_path": track.file_path 
             })
         
         with open("library.json", "w", encoding="utf-8") as f:
